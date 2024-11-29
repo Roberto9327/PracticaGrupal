@@ -41,6 +41,18 @@ def save_credentials(twitter_key, twitter_secret, facebook_key, facebook_secret,
 # Cargar credenciales al iniciar la aplicación
 credentials = load_credentials()
 
+# Función ficticia para simular la recuperación de publicaciones
+def fetch_posts(platform):
+    # Aquí iría la lógica para conectarse a la API de la red social y recuperar las publicaciones
+    # Retornar una lista de publicaciones simuladas
+    return [
+        {'date': '3/15/2024, 5:00:00 AM', 'content': 'Excited to announce our new product launch!'},
+        {'date': '3/16/2024, 6:00:00 AM', 'content': 'Had a great day at the park!'},
+        {'date': '3/17/2024, 7:00:00 AM', 'content': 'Feeling sad about the recent news.'},
+        {'date': '3/18/2024, 8:00:00 AM', 'content': 'Can’t wait for the weekend!'},
+        # Agrega más publicaciones simuladas según sea necesario
+    ]
+
 app.layout = html.Div([
     dcc.Tabs([
         dcc.Tab(label='Dashboard', children=[
@@ -56,7 +68,10 @@ app.layout = html.Div([
                 html.H1("Análisis de Sentimiento en Twitter"),
                 dcc.Input(id='input-twitter', type='text', placeholder='Ingresa un tweet aquí', style={'width': '100%'}),
                 html.Button('Analizar Tweet', id='analyze-twitter-button', n_clicks=0),
-                dcc.Graph(id='twitter-sentiment-graph')
+                dcc.Graph(id='twitter-sentiment-graph'),
+                html.Div(id='posts-list'),
+                dcc.Input(id='filter-input', type='text', placeholder='Filtrar publicaciones', style={'width': '100%'}),
+                html.Button('Cargar Publicaciones', id='fetch-posts-button', n_clicks=0),
             ])
         ]),
         dcc.Tab(label='Facebook', children=[
@@ -81,11 +96,10 @@ app.layout = html.Div([
                 html.Div([
                     html.H2("Twitter"),
                     html.Label("API Key:"),
-                    dcc.Input(id='twitter-api-key', type='text', value=credentials['twitter'].get('api_key', ''), style={'width': '100%'}),
-                    html.Label ("API Secret:"),
+                    dcc.Input(id='twitter-api-key', type='text ', value=credentials['twitter'].get('api_key', ''), style={'width': '100%'}),
+                    html.Label("API Secret:"),
                     dcc.Input(id='twitter-api-secret', type='text', value=credentials['twitter'].get('api_secret', ''), style={'width': '100%'}),
-                    html.Button('Guardar Credenciales de Twitter', id='save-twitter-credentials-button', n_clicks=0),
-                    html.Div(id='twitter-credentials-output')
+                    html.Button('Guardar Credenciales', id='save-credentials-button', n_clicks=0)
                 ]),
                 html.Div([
                     html.H2("Facebook"),
@@ -93,8 +107,6 @@ app.layout = html.Div([
                     dcc.Input(id='facebook-api-key', type='text', value=credentials['facebook'].get('api_key', ''), style={'width': '100%'}),
                     html.Label("API Secret:"),
                     dcc.Input(id='facebook-api-secret', type='text', value=credentials['facebook'].get('api_secret', ''), style={'width': '100%'}),
-                    html.Button('Guardar Credenciales de Facebook', id='save-facebook-credentials-button', n_clicks=0),
-                    html.Div(id='facebook-credentials-output')
                 ]),
                 html.Div([
                     html.H2("Instagram"),
@@ -102,94 +114,56 @@ app.layout = html.Div([
                     dcc.Input(id='instagram-api-key', type='text', value=credentials['instagram'].get('api_key', ''), style={'width': '100%'}),
                     html.Label("API Secret:"),
                     dcc.Input(id='instagram-api-secret', type='text', value=credentials['instagram'].get('api_secret', ''), style={'width': '100%'}),
-                    html.Button('Guardar Credenciales de Instagram', id='save-instagram-credentials-button', n_clicks=0),
-                    html.Div(id='instagram-credentials-output')
-                ]),
+                ])
             ])
-        ]),
+        ])
     ])
 ])
 
-# Callbacks para actualizar los gráficos
+# Callbacks para manejar la lógica de la aplicación
 @app.callback(
     Output('sentiment-graph', 'figure'),
     Input('analyze-button', 'n_clicks'),
     Input('input-text', 'value')
 )
-def update_dashboard_graph(n_clicks, input_text):
+def update_sentiment_graph(n_clicks, input_text):
     if n_clicks > 0 and input_text:
-        sentiment_result = analyze_sentiment(input_text)
-        return create_sentiment_graph(sentiment_result)
+        sentiment_score = analyze_sentiment(input_text)
+        return create_sentiment_graph(sentiment_score)
     return {}
 
 @app.callback(
-    Output('twitter-sentiment-graph', 'figure'),
-    Input('analyze-twitter-button', 'n_clicks'),
-    Input('input-twitter', 'value')
+    Output('posts-list', 'children'),
+    Input('fetch-posts-button', 'n_clicks'),
+    Input('filter-input', 'value')
 )
-def update_twitter_graph(n_clicks, input_tweet):
-    if n_clicks > 0 and input_tweet:
-        sentiment_result = analyze_sentiment(input_tweet)
-        return create_sentiment_graph(sentiment_result)
-    return {}
+def update_posts_list(n_clicks, filter_value):
+    if n_clicks > 0:
+        posts = fetch_posts('twitter')
+        if filter_value:
+            posts = [post for post in posts if filter_value.lower() in post['content'].lower()]
+        return [html.Div(f"{post['date']}: {post['content']}") for post in posts]
+    return []
 
 @app.callback(
-    Output('facebook-sentiment-graph', 'figure'),
-    Input('analyze-facebook-button', 'n_clicks'),
-    Input('input-facebook', 'value')
-)
-def update_facebook_graph(n_clicks, input_post):
-    if n_clicks > 0 and input_post:
-        sentiment_result = analyze_sentiment(input_post)
-        return create_sentiment_graph(sentiment_result)
-    return {}
-
-@app.callback(
-    Output('instagram-sentiment-graph', 'figure'),
-    Input('analyze-instagram-button', 'n_clicks'),
-    Input('input-instagram', 'value')
-)
-def update_instagram_graph(n_clicks, input_comment):
-    if n_clicks > 0 and input_comment:
-        sentiment_result = analyze_sentiment(input_comment)
-        return create_sentiment_graph(sentiment_result)
-    return {}
-
-@app.callback(
-    Output('twitter-credentials-output', 'children'),
-    Input('save-twitter-credentials-button', 'n_clicks'),
+    Output('twitter-api-key', 'value'),
+    Output('twitter-api-secret', 'value'),
+    Output('facebook-api-key', 'value'),
+    Output('facebook-api-secret', 'value'),
+    Output('instagram-api-key', 'value'),
+    Output('instagram-api-secret', 'value'),
+    Input('save-credentials-button', 'n_clicks'),
     Input('twitter-api-key', 'value'),
-    Input('twitter-api-secret', 'value')
-)
-def save_twitter_credentials_callback(n_clicks, api_key, api_secret):
-    if n_clicks > 0:
-        save_credentials(api_key, api_secret, '', '', '', '')
-        return "Credenciales de Twitter guardadas exitosamente."
-    return ""
-
-@app.callback(
-    Output('facebook-credentials-output', 'children'),
-    Input('save-facebook-credentials-button', 'n_clicks'),
+    Input('twitter-api-secret', 'value'),
     Input('facebook-api-key', 'value'),
-    Input('facebook-api-secret', 'value')
-)
-def save_facebook_credentials_callback(n_clicks, api_key, api_secret):
-    if n_clicks > 0:
-        save_credentials('', '', api_key, api_secret, '', '')
-        return "Credenciales de Facebook guardadas exitosamente."
-    return ""
-
-@app.callback(
-    Output('instagram-credentials-output', 'children'),
-    Input('save-instagram-credentials-button', 'n_clicks'),
+    Input('facebook-api-secret', 'value'),
     Input('instagram-api-key', 'value'),
-    Input('instagram-api-secret', 'value')
+    Input('instagram-api-secret', 'value'),
 )
-def save_instagram_credentials_callback(n_clicks, api_key, api_secret):
+def save_credentials_callback(n_clicks, twitter_key, twitter_secret, facebook_key, facebook_secret, instagram_key, instagram_secret):
     if n_clicks > 0:
-        save_credentials('', '', '', '', api_key, api_secret)
-        return "Credenciales de Instagram guardadas exitosamente."
-    return ""
+        save_credentials(twitter_key, twitter_secret, facebook_key, facebook_secret, instagram_key, instagram_secret)
+    return twitter_key, twitter_secret, facebook_key, facebook_secret, instagram_key, instagram_secret
 
 if __name__ == '__main__':
     app.run_server(debug=True)

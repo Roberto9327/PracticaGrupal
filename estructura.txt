@@ -1,0 +1,14 @@
+sentiment_analysis_platform/
+├── app.py
+├── credentials/
+│   ├── twitter_credentials.xlsx
+│   ├── facebook_credentials.xlsx
+│   └── instagram_credentials.xlsx
+├── data/
+│   └── sample_data.csv
+├── analysis/
+│   ├── sentiment_analysis.py
+│   └── data_extraction.py
+├── visualizations/
+│   └── sentiment_visualization.py
+└── requirements.txt
